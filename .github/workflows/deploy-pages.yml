@@ -1,0 +1,70 @@
+name: Deploy to GitHub Pages
+
+# deploy เมื่อ push ไป main เท่านั้น
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # กด trigger ด้วยมือจาก GitHub UI ได้
+
+# อนุญาตให้ workflow นี้ deploy ไป GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# ให้ deploy ทีละครั้ง ไม่ queue ซ้อน
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: project
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build (GitHub Pages)
+        run: npm run build
+        env:
+          # ชี้ไปยัง backend ที่รันจริง (เปลี่ยน URL นี้หลัง deploy backend)
+          # ถ้ายังไม่มี backend สาธารณะ ให้ปล่อยว่าง dashboard จะทำงานแบบ offline
+          VITE_API_URL: ''
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Vite build output อยู่ใน project/dist/
+          path: project/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
