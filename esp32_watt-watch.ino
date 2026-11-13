@@ -11,7 +11,7 @@ const char* WIFI_PASS = "1234567890";
 
 const char* SUPABASE_URL = "https://ecmdrqotdtbmfckovtbw.supabase.co/rest/v1/rooms?on_conflict=id";
 const char* SUPABASE_KEY = "sb_publishable_X8gWTK8ZjbD47K8sgr7dcA_0_tARmsz";
-const char* LINE_TOKEN   = "hCMwj5lL9wHdw3qinXm9A4aKZX3Z//xXmtPDvz19IU0ZdIYRlPsgPixiEyjPXrht/hwt1i5A3P9S8+itdWFtVzD8i0OOADyDLQh/x+Mg8V4lyjgqcH9dkHf1Dlzc8nrEaTMpvGrhPygiaH/lD7FMNY9PbdgDzCFqoOLOYbqAITQ=";
+const char* LINE_TOKEN   = "Mxx136okuQSRELV7s+BbhgfYU6CMY1XRjMYmhIsNEkk2r2Na6F/Dmf+T7wz+wnAl/hwt1i5A3P9S8+itdWFtVzD8i0OOADyDLQh/x+Mg8V7+BlqJv6f2bmeYkyu5i+8/fS3BtAr9Psp3/4LlIjZtcgdB04t89/1O/w1cDnyilFU=";
 
 const int   VOLTAGE_V        = 220;
 const float MAX_AMPS         = 20.0;
