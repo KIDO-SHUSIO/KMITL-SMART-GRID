@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 CREATE OR REPLACE FUNCTION notify_line_on_energy_waste()
 RETURNS trigger AS $$
 DECLARE
-  line_token text := 'hCMwj5lL9wHdw3qinXm9A4aKZX3Z//xXmtPDvz19IU0ZdIYRlPsgPixiEyjPXrht/hwt1i5A3P9S8+itdWFtVzD8i0OOADyDLQh/x+Mg8V4lyjgqcH9dkHf1Dlzc8nrEaTMpvGrhPygiaH/lD7FMNY9PbdgDzCFqoOLOYbqAITQ=';
+  line_token text := '71go7K/p6rBzjOJfIuWioeoTd7AgfXLhHJUKFh7qlFkim0NhWj0bQ60u6q5o961TvsWnFcWESBXi93V6UCqRMRx9KGau4W++dGjbCLPqerNcQnR8gTElrRKKHF42DQVsymdQJhQ0LpFfH5z6S4/9MI9PbdgDzCFqoOLOYbqAITQ=';
   msg text;
   payload jsonb;
 BEGIN

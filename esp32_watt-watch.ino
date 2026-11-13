@@ -287,7 +287,8 @@ void sendTelemetry(float amps, bool motion) {
     return;
   }
 
-  const char* currentStatus = (roomAlarmState[roomIdx] == STATE_WASTE_ALERTED) ? "Energy Waste" : "Normal";
+  bool isWaste = (!motion && amps >= 7.0);
+  const char* currentStatus = (isWaste || roomAlarmState[roomIdx] == STATE_WASTE_ALERTED) ? "Energy Waste" : "Normal";
 
   char body[350];
   snprintf(body, sizeof(body),
@@ -334,6 +335,11 @@ void sendNow() {
   lastSentAmps = amps;
   lastSentMotion = motion;
   lastSentRoom = roomIdx;
+
+  // หากตรวจพบ Energy Waste (ไม่มีคน และกระแส >= 7.0A) ให้ส่งแจ้งเตือน LINE ทันที
+  if (!motion && amps >= 7.0) {
+    sendLineAlert(roomIdx, amps);
+  }
 
   sendTelemetry(amps, motion);
   lastAuto = millis();
