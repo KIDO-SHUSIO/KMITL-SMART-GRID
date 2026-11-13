@@ -29,7 +29,19 @@ try {
   execSync('git add -A', { cwd: gitRoot, env });
   const treeSha = execSync('git write-tree', { cwd: gitRoot, env }).toString().trim();
   const commitMsg = 'deploy(pages): build frontend and export to gh-pages';
-  const commitSha = execSync(`git commit-tree ${treeSha} -m "${commitMsg}"`, {
+  let parentArg = '';
+  try {
+    const parentSha = execSync('git rev-parse --verify refs/heads/gh-pages', { cwd: gitRoot })
+      .toString()
+      .trim();
+    if (parentSha) {
+      parentArg = `-p ${parentSha}`;
+    }
+  } catch {
+    // ไม่มี branch gh-pages มาก่อน ปล่อยเป็น commit แรก
+  }
+
+  const commitSha = execSync(`git commit-tree ${treeSha} ${parentArg} -m "${commitMsg}"`, {
     cwd: gitRoot,
     env,
   })
