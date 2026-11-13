@@ -68,7 +68,6 @@ bool hasAlertedOnce[ROOM_COUNT] = {false};       // บันทึกว่า�
 
 const unsigned long WASTE_CONFIRM_MS = 5000;     // ต้องไม่มีคนและไฟเกินต่อเนื่องครบ 5 วินาทีจึงจะแจ้งเตือน
 const unsigned long CLEAR_CONFIRM_MS = 10000;    // ต้องมีคนอยู่ต่อเนื่อง 10 วินาทีถึงจะเคลียร์ incident ป้องกัน PIR กระพริบ
-const unsigned long LINE_COOLDOWN_MS = 180000;   // คูลดาวน์ 3 นาที ป้องกันสแปมแจ้งเตือนซ้ำ
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 

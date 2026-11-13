@@ -5,3 +5,4 @@
 
 DROP TRIGGER IF EXISTS tr_notify_line_energy_waste ON rooms;
 DROP FUNCTION IF EXISTS notify_line_on_energy_waste();
+

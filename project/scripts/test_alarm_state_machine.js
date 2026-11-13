@@ -123,3 +123,4 @@ console.log('Total alerts after cooldown expired:', room.alertLog.length);
 if (room.alertLog.length !== 2) throw new Error('Test 6 failed! Should have sent second alert after cooldown!');
 
 console.log('\n>>> ALL 6 TESTS PASSED FLAWLESSLY! STATE MACHINE IS 100% VERIFIED. <<<');
+
