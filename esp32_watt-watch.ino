@@ -16,8 +16,8 @@ const unsigned long LINE_COOLDOWN_MS = 180000; // Cooldown 3 นาที ป้
 
 const int   VOLTAGE_V        = 220;
 const float MAX_AMPS         = 20.0;
-const unsigned long MOTION_HOLD_MS = 5000;
-const unsigned long PIR_WARMUP_MS  = 0;        // ตอนโชว์จริงค่อยเปลี่ยนเป็น 30000
+const unsigned long MOTION_HOLD_MS = 1500;       // ปรับให้ตรวจจับว่าไม่มีคนเร็วขึ้น (เดิม 5000 ms)
+const unsigned long PIR_WARMUP_MS  = 0;          // ตอนโชว์จริงค่อยเปลี่ยนเป็น 30000
 const unsigned long LONG_PRESS_MS  = 800;
 const unsigned long AUTO_SEND_MS   = 800;
 const unsigned long MIN_GAP_MS     = 500;
@@ -54,6 +54,7 @@ const int ROOM_COUNT = 6;
 bool roomLoadOn[ROOM_COUNT];     // สถานะเปิด-ปิดของแต่ละห้อง
 int  roomBrightness[ROOM_COUNT]; // ความสว่างล่าสุดของแต่ละห้อง
 unsigned long lastLineAlertMs[ROOM_COUNT] = {0}; // เวลาแจ้งเตือน LINE ล่าสุดของแต่ละห้อง
+bool roomWasWaste[ROOM_COUNT] = {false};         // บันทึกสถานะว่าห้องนี้แจ้งเตือน Waste ไปแล้วหรือยัง (ส่งแค่ 1 ครั้ง)
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
@@ -159,13 +160,14 @@ void sendLineAlert(int idx, float amps) {
   if (millis() - lastLineAlertMs[idx] < LINE_COOLDOWN_MS) {
     return; // ยังอยู่ในช่วง Cooldown
   }
+  lastLineAlertMs[idx] = millis(); // บันทึกเวลาทันทีเพื่อป้องกันการส่งซ้ำ
 
   HTTPClient http;
   WiFiClientSecure secure;
   secure.setInsecure();
 
   http.begin(secure, "https://api.line.me/v2/bot/message/broadcast");
-  http.setTimeout(5000);
+  http.setTimeout(3000);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", String("Bearer ") + LINE_TOKEN);
 
@@ -187,7 +189,6 @@ void sendLineAlert(int idx, float amps) {
 
   int code = http.POST((uint8_t*)payload, strlen(payload));
   if (code >= 200 && code < 300) {
-    lastLineAlertMs[idx] = millis();
     Serial.println("LINE broadcast alert sent successfully!");
   } else {
     Serial.printf("LINE broadcast alert failed: HTTP %d\n", code);
@@ -201,7 +202,19 @@ void sendTelemetry(float amps, bool motion) {
     return;
   }
 
-  const char* currentStatus = (!motion && amps >= 7.0) ? "Energy Waste" : "Normal";
+  bool isWaste = (!motion && amps >= 7.0);
+  const char* currentStatus = isWaste ? "Energy Waste" : "Normal";
+
+  // ตรวจจับ Edge Trigger: ส่ง LINE เฉพาะตอนที่เพิ่งเปลี่ยนเป็น Energy Waste ครั้งแรก
+  if (isWaste) {
+    if (!roomWasWaste[roomIdx]) {
+      roomWasWaste[roomIdx] = true;
+      sendLineAlert(roomIdx, amps);
+    }
+  } else {
+    // เมื่อกลับเป็น Normal ให้รีเซ็ต เพื่อพร้อมแจ้งเตือนใหม่ในครั้งต่อไป
+    roomWasWaste[roomIdx] = false;
+  }
 
   char body[350];
   snprintf(body, sizeof(body),
@@ -222,7 +235,7 @@ void sendTelemetry(float amps, bool motion) {
   secure.setInsecure();
 
   http.begin(secure, SUPABASE_URL);
-  http.setTimeout(5000);
+  http.setTimeout(4000);
   
   http.addHeader("Content-Type", "application/json");
   http.addHeader("apikey", SUPABASE_KEY);
@@ -239,11 +252,6 @@ void sendTelemetry(float amps, bool motion) {
 
   http.end();
   Serial.println(lastResult);
-
-  // ถ้าเป็น Energy Waste ให้ส่งแจ้งเตือนเข้า LINE อัตโนมัติ
-  if (strcmp(currentStatus, "Energy Waste") == 0) {
-    sendLineAlert(roomIdx, amps);
-  }
 }
 
 void sendNow() {
