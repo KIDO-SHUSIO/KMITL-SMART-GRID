@@ -30,3 +30,4 @@ CREATE TRIGGER tr_record_energy_reading
 AFTER INSERT OR UPDATE ON rooms
 FOR EACH ROW
 EXECUTE FUNCTION record_energy_reading_on_room_update();
+

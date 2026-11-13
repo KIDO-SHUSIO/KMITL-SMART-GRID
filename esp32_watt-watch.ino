@@ -54,7 +54,9 @@ const int ROOM_COUNT = 6;
 bool roomLoadOn[ROOM_COUNT];     // สถานะเปิด-ปิดของแต่ละห้อง
 int  roomBrightness[ROOM_COUNT]; // ความสว่างล่าสุดของแต่ละห้อง
 unsigned long lastLineAlertMs[ROOM_COUNT] = {0}; // เวลาแจ้งเตือน LINE ล่าสุดของแต่ละห้อง
-bool roomWasWaste[ROOM_COUNT] = {false};         // บันทึกสถานะว่าห้องนี้แจ้งเตือน Waste ไปแล้วหรือยัง (ส่งแค่ 1 ครั้ง)
+bool roomWasWaste[ROOM_COUNT] = {false};         // บันทึกสถานะว่าห้องนี้แจ้งเตือน Waste ไปแล้วหรือยัง
+unsigned long wasteStartedAt[ROOM_COUNT] = {0};  // เวลาที่เริ่มเข้าเงื่อนไขไม่มีคนและไฟเกิน
+const unsigned long WASTE_CONFIRM_MS = 5000;     // ต้องไม่มีคนและไฟเกินต่อเนื่องครบ 5 วินาทีจึงจะแจ้งเตือน
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
@@ -202,19 +204,25 @@ void sendTelemetry(float amps, bool motion) {
     return;
   }
 
-  bool isWaste = (!motion && amps >= 7.0);
-  const char* currentStatus = isWaste ? "Energy Waste" : "Normal";
+  bool conditionMet = (!motion && amps >= 7.0);
+  bool isConfirmedWaste = false;
 
-  // ตรวจจับ Edge Trigger: ส่ง LINE เฉพาะตอนที่เพิ่งเปลี่ยนเป็น Energy Waste ครั้งแรก
-  if (isWaste) {
-    if (!roomWasWaste[roomIdx]) {
-      roomWasWaste[roomIdx] = true;
-      sendLineAlert(roomIdx, amps);
+  if (conditionMet) {
+    if (wasteStartedAt[roomIdx] == 0) {
+      wasteStartedAt[roomIdx] = millis();
+    } else if (millis() - wasteStartedAt[roomIdx] >= WASTE_CONFIRM_MS) {
+      isConfirmedWaste = true;
+      if (!roomWasWaste[roomIdx]) {
+        roomWasWaste[roomIdx] = true;
+        sendLineAlert(roomIdx, amps);
+      }
     }
   } else {
-    // เมื่อกลับเป็น Normal ให้รีเซ็ต เพื่อพร้อมแจ้งเตือนใหม่ในครั้งต่อไป
+    wasteStartedAt[roomIdx] = 0;
     roomWasWaste[roomIdx] = false;
   }
+
+  const char* currentStatus = isConfirmedWaste ? "Energy Waste" : "Normal";
 
   char body[350];
   snprintf(body, sizeof(body),
@@ -395,13 +403,28 @@ void loop() {
 
   updateRoomLEDs();
 
-  if (AUTO_SEND_MS > 0) {
-    float amps = roomLoadOn[roomIdx] ? readAmps() : 0.0;
-    bool motion = hasMotion();
+  float liveAmps = roomLoadOn[roomIdx] ? readAmps() : 0.0;
+  bool liveMotion = hasMotion();
 
+  // ตรวจจับเงื่อนไขไม่มีคนและไฟเกิน ต้องค้างต่อเนื่องครบ 5 วินาที
+  bool conditionMet = (!liveMotion && liveAmps >= 7.0);
+  if (conditionMet) {
+    if (wasteStartedAt[roomIdx] == 0) {
+      wasteStartedAt[roomIdx] = millis();
+    } else if (!roomWasWaste[roomIdx] && (millis() - wasteStartedAt[roomIdx] >= WASTE_CONFIRM_MS)) {
+      // ครบ 5 วินาทีติดต่อกัน ให้ส่ง telemetry และแจ้งเตือน LINE ทันที
+      sendNow();
+    }
+  } else {
+    // ถ้ามีคนขยับหรือลดกระแสไฟ ให้รีเซ็ตตัวนับเวลาและสถานะ
+    wasteStartedAt[roomIdx] = 0;
+    roomWasWaste[roomIdx] = false;
+  }
+
+  if (AUTO_SEND_MS > 0) {
     bool changed =
-      (fabs(amps - lastSentAmps) >= AMPS_DELTA) ||
-      (motion != lastSentMotion) ||
+      (fabs(liveAmps - lastSentAmps) >= AMPS_DELTA) ||
+      (liveMotion != lastSentMotion) ||
       (roomIdx != lastSentRoom);
 
     unsigned long since = millis() - lastAuto;
