@@ -270,12 +270,8 @@ void updateAlarmState(int idx, float amps, bool motion) {
           sendNow();
         }
       } else {
-        // ยังคงไม่มีคนและไฟเกินอยู่ → ตรวจสอบซ้ำทุก 10 วินาทีแล้วส่ง LINE อีกครั้ง
+        // ยังคงไม่มีคนและไฟเกินอยู่ ให้รีเซ็ตเวลาเคลียร์ และไม่ส่ง LINE ซ้ำ (ส่งเตือน 1 ครั้งต่อเหตุการณ์)
         clearStartedAt[idx] = 0;
-        if (now - lastLineAlertMs[idx] >= RECHECK_INTERVAL_MS) {
-          sendLineAlert(idx, amps);
-          sendNow();
-        }
       }
       break;
   }
@@ -335,11 +331,6 @@ void sendNow() {
   lastSentAmps = amps;
   lastSentMotion = motion;
   lastSentRoom = roomIdx;
-
-  // หากตรวจพบ Energy Waste (ไม่มีคน และกระแส >= 7.0A) ให้ส่งแจ้งเตือน LINE ทันที
-  if (!motion && amps >= 7.0) {
-    sendLineAlert(roomIdx, amps);
-  }
 
   sendTelemetry(amps, motion);
   lastAuto = millis();
