@@ -169,25 +169,29 @@ bool ensureWifi() {
 }
 
 void sendLineAlert(int idx, float amps) {
+  if (!ensureWifi()) {
+    Serial.println("[LINE Alert] WiFi not connected, skipping");
+    return;
+  }
+
   // ตรวจสอบว่าส่งไปแล้วหรือยัง ถ้าเคยส่ง ต้องรอครบ 10 วินาทีถึงจะส่งใหม่ได้
   if (lastLineAlertMs[idx] != 0 && (millis() - lastLineAlertMs[idx] < RECHECK_INTERVAL_MS)) {
     Serial.println("[LINE Alert] Waiting for 10s recheck interval");
     return;
   }
-  lastLineAlertMs[idx] = millis(); // บันทึกเวลาทันทีเพื่อป้องกันการส่งซ้ำ
 
   HTTPClient http;
   WiFiClientSecure secure;
   secure.setInsecure();
 
   http.begin(secure, "https://api.line.me/v2/bot/message/broadcast");
-  http.setTimeout(3000);
+  http.setTimeout(8000);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", String("Bearer ") + LINE_TOKEN);
 
-  char msg[350];
+  char msg[600];
   snprintf(msg, sizeof(msg),
-    "🚨 แจ้งเตือน: ตรวจพบ Energy Waste!\n━━━━━━━━━━━━━━━━━━\n🏢 อาคาร: %s\n🚪 ห้อง: Rm %s (%s)\n⚡ กระแส: %.1f A (%.2f kW)\n👤 คนในห้อง: ไม่มีคนอยู่\n━━━━━━━━━━━━━━━━━━\nระบบ: KMITL Smart Grid",
+    "🚨 แจ้งเตือน: ตรวจพบ Energy Waste!\\n━━━━━━━━━━━━━━━━━━\\n🏢 อาคาร: %s\\n🚪 ห้อง: Rm %s (%s)\\n⚡ กระแส: %.1f A (%.2f kW)\\n👤 คนในห้อง: ไม่มีคนอยู่\\n━━━━━━━━━━━━━━━━━━\\nระบบ: KMITL Smart Grid",
     ROOMS[idx].building,
     ROOMS[idx].room,
     ROOMS[idx].zone,
@@ -195,7 +199,7 @@ void sendLineAlert(int idx, float amps) {
     (amps * VOLTAGE_V) / 1000.0
   );
 
-  char payload[500];
+  char payload[750];
   snprintf(payload, sizeof(payload),
     "{\"messages\":[{\"type\":\"text\",\"text\":\"%s\"}]}",
     msg
@@ -204,8 +208,12 @@ void sendLineAlert(int idx, float amps) {
   int code = http.POST((uint8_t*)payload, strlen(payload));
   if (code >= 200 && code < 300) {
     Serial.println("LINE broadcast alert sent successfully!");
+    lastLineAlertMs[idx] = millis();
   } else {
     Serial.printf("LINE broadcast alert failed: HTTP %d\n", code);
+    String resp = http.getString();
+    Serial.printf("LINE response: %s\n", resp.c_str());
+    lastLineAlertMs[idx] = 0;
   }
   http.end();
 }
