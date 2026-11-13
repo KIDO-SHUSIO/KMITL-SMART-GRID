@@ -360,6 +360,7 @@ void draw() {
   display.print(lastResult);
 
   display.display();
+  
 }
 
 // -------------------------------------------------------
