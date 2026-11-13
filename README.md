@@ -60,4 +60,4 @@ npm run dev
 - [วิธี deploy](DEPLOY.md)
 - [ผลประเมิน L1/L2/L3](project/EVALUATION.md)
 
-ระบบใช้ข้อมูลจำลอง ตัวเลขค่าไฟและคาร์บอนเป็นข้อสมมติ และ `npm run evaluate` วัดผลด้วยข้อมูลสังเคราะห์ ไม่ใช่ข้อมูลวัดจริงจาก KMITL หากยังไม่มี L4 ให้เรียกระบบว่า rule-based + statistical anomaly detection ไม่ใช่ machine learning
+ระบบใช้ข้อมูลจำลอง ตัวเลขค่าไฟและคาร์บอนเป็นข้อสมมติ และ `npm run evaluate` วัดผลด้วยข้อมูลสังเคราะห์ ไม่ใช่ข้อมูลวัดจริงจาก KMITL หากยังไม่มี L4 ให้เรียกระบบว่า rule-based + statistical anomaly detection ไม่ใช่ machine learning# KMITL_SMART_GRID
