@@ -22,7 +22,7 @@ export default function SystemBeacon({ status, label, detail }: Props) {
   return (
     <section
       aria-live="polite"
-      className={`flex items-center gap-4 rounded-2xl border p-4 transition-all duration-300 ${styles.box}`}
+      className={`relative z-0 flex items-center gap-4 rounded-2xl border p-4 transition-all duration-300 ${styles.box}`}
     >
       <span className={`h-10 w-10 shrink-0 rounded-full ${styles.dot}`} />
       <div className="min-w-0">

@@ -96,7 +96,7 @@ export default function MetricCards({ energySaved, savings, criticalRooms, uptim
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+    <div className="relative z-30 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
       {metrics.map((m) => {
         const Icon = m.icon;
         const hasFormula = Boolean(m.formula);
@@ -105,7 +105,9 @@ export default function MetricCards({ energySaved, savings, criticalRooms, uptim
         return (
           <div
             key={m.id}
-            className={`relative rounded-xl border ${m.ring} bg-charcoal-800/70 backdrop-blur p-4 sm:p-5 ${m.glow} transition-transform duration-300 hover:-translate-y-0.5`}
+            className={`relative ${
+              isOpen ? 'z-40' : 'z-0'
+            } rounded-xl border ${m.ring} bg-charcoal-800/70 backdrop-blur p-4 sm:p-5 ${m.glow} transition-transform duration-300 hover:-translate-y-0.5`}
           >
             <div className="overflow-hidden absolute inset-0 rounded-xl pointer-events-none">
               <div className="absolute right-0 top-0 h-20 w-20 -translate-y-6 translate-x-6 rounded-full bg-gradient-to-br from-white/5 to-transparent blur-xl" />
@@ -124,7 +126,7 @@ export default function MetricCards({ energySaved, savings, criticalRooms, uptim
               </div>
 
               {/* Icon Container with Tooltip/Popover */}
-              <div className="relative shrink-0">
+              <div className={`relative shrink-0 ${isOpen ? 'z-50' : ''}`}>
                 <button
                   type="button"
                   title={hasFormula ? 'แตะหรือชี้เพื่อดูสูตรคำนวณ' : undefined}
