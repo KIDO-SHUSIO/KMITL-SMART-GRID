@@ -25,6 +25,7 @@ import { API_URL } from './lib/config';
 import SystemBeacon from './components/SystemBeacon';
 import AutoSim from './components/AutoSim';
 import { analyze, powerKw } from './engine/energy';
+import { playAlertSound } from './utils/sound';
 import type { Room, LogEntry, SimulationPayload, EnergyReading, ToastMessage } from './types';
 
 const UPTIME = 99.9;
@@ -131,7 +132,11 @@ function App() {
             ? prev.map((r) => (r.id === newData.id ? newData : r))
             : [...prev, newData];
         });
-        if (newData.status === 'Energy Waste' && eventType === 'INSERT') {
+        if (
+          newData.status === 'Energy Waste' &&
+          (eventType === 'INSERT' || (eventType === 'UPDATE' && oldData?.status !== 'Energy Waste'))
+        ) {
+          playAlertSound();
           addToast({
             type: 'error',
             title: 'Energy Waste Detected',
@@ -251,6 +256,7 @@ function App() {
         );
 
         if (room.status === 'Energy Waste') {
+          playAlertSound();
           await addLog({
             level: 'error',
             tag: '[AI]',

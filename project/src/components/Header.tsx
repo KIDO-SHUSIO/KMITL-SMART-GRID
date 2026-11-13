@@ -2,6 +2,7 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { API_URL } from '../lib/config';
 import { Radio, Cpu, Wifi, CloudOff, Cloud, Loader2 } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import SoundToggle from './SoundToggle';
 
 interface Props {
   connectionState?: 'connecting' | 'online' | 'offline';
@@ -54,7 +55,8 @@ export default function Header({ connectionState = 'online' }: Props) {
             <ConnIcon className={`h-3.5 w-3.5 ${connectionState === 'connecting' ? 'animate-spin' : ''}`} />
             <span className="font-mono">{isLocal ? 'MODE: LOCAL' : `${API_URL ? 'API' : 'DB'}: ${conn.label}`}</span>
           </div>
-          <div className="border-l border-slate-700/60 pl-3">
+          <div className="flex items-center gap-2 border-l border-slate-700/60 pl-3">
+            <SoundToggle />
             <ThemeToggle />
           </div>
         </div>

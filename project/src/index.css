@@ -123,7 +123,8 @@ html.light .text-kmitl-orange-light {
   color: #D95300 !important;
 }
 
-html.light .text-kmitl-green {
+html.light .text-kmitl-green,
+html.light .text-emerald-400 {
   color: #15803D !important;
 }
 
