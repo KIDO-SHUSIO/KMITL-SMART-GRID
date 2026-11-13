@@ -11,6 +11,8 @@ const char* WIFI_PASS = "1234567890";
 
 const char* SUPABASE_URL = "https://ecmdrqotdtbmfckovtbw.supabase.co/rest/v1/rooms?on_conflict=id";
 const char* SUPABASE_KEY = "sb_publishable_X8gWTK8ZjbD47K8sgr7dcA_0_tARmsz";
+const char* LINE_TOKEN   = "hCMwj5lL9wHdw3qinXm9A4aKZX3Z//xXmtPDvz19IU0ZdIYRlPsgPixiEyjPXrht/hwt1i5A3P9S8+itdWFtVzD8i0OOADyDLQh/x+Mg8V4lyjgqcH9dkHf1Dlzc8nrEaTMpvGrhPygiaH/lD7FMNY9PbdgDzCFqoOLOYbqAITQ=";
+const unsigned long LINE_COOLDOWN_MS = 180000; // Cooldown 3 นาที ป้องกันสแปมแจ้งเตือนซ้ำ
 
 const int   VOLTAGE_V        = 220;
 const float MAX_AMPS         = 20.0;
@@ -51,6 +53,7 @@ const int ROOM_COUNT = 6;
 
 bool roomLoadOn[ROOM_COUNT];     // สถานะเปิด-ปิดของแต่ละห้อง
 int  roomBrightness[ROOM_COUNT]; // ความสว่างล่าสุดของแต่ละห้อง
+unsigned long lastLineAlertMs[ROOM_COUNT] = {0}; // เวลาแจ้งเตือน LINE ล่าสุดของแต่ละห้อง
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
@@ -152,6 +155,46 @@ bool ensureWifi() {
   return WiFi.status() == WL_CONNECTED;
 }
 
+void sendLineAlert(int idx, float amps) {
+  if (millis() - lastLineAlertMs[idx] < LINE_COOLDOWN_MS) {
+    return; // ยังอยู่ในช่วง Cooldown
+  }
+
+  HTTPClient http;
+  WiFiClientSecure secure;
+  secure.setInsecure();
+
+  http.begin(secure, "https://api.line.me/v2/bot/message/broadcast");
+  http.setTimeout(5000);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", String("Bearer ") + LINE_TOKEN);
+
+  char msg[350];
+  snprintf(msg, sizeof(msg),
+    "🚨 แจ้งเตือน: ตรวจพบ Energy Waste!\n━━━━━━━━━━━━━━━━━━\n🏢 อาคาร: %s\n🚪 ห้อง: Rm %s (%s)\n⚡ กระแส: %.1f A (%.2f kW)\n👤 คนในห้อง: ไม่มีคนอยู่\n━━━━━━━━━━━━━━━━━━\nระบบ: KMITL Smart Grid",
+    ROOMS[idx].building,
+    ROOMS[idx].room,
+    ROOMS[idx].zone,
+    amps,
+    (amps * VOLTAGE_V) / 1000.0
+  );
+
+  char payload[500];
+  snprintf(payload, sizeof(payload),
+    "{\"messages\":[{\"type\":\"text\",\"text\":\"%s\"}]}",
+    msg
+  );
+
+  int code = http.POST((uint8_t*)payload, strlen(payload));
+  if (code >= 200 && code < 300) {
+    lastLineAlertMs[idx] = millis();
+    Serial.println("LINE broadcast alert sent successfully!");
+  } else {
+    Serial.printf("LINE broadcast alert failed: HTTP %d\n", code);
+  }
+  http.end();
+}
+
 void sendTelemetry(float amps, bool motion) {
   if (!ensureWifi()) {
     lastResult = "WiFi FAIL";
@@ -196,6 +239,11 @@ void sendTelemetry(float amps, bool motion) {
 
   http.end();
   Serial.println(lastResult);
+
+  // ถ้าเป็น Energy Waste ให้ส่งแจ้งเตือนเข้า LINE อัตโนมัติ
+  if (strcmp(currentStatus, "Energy Waste") == 0) {
+    sendLineAlert(roomIdx, amps);
+  }
 }
 
 void sendNow() {
