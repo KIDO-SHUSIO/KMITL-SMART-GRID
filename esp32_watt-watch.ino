@@ -15,7 +15,7 @@ const char* LINE_TOKEN   = "hCMwj5lL9wHdw3qinXm9A4aKZX3Z//xXmtPDvz19IU0ZdIYRlPsg
 
 const int   VOLTAGE_V        = 220;
 const float MAX_AMPS         = 20.0;
-const unsigned long MOTION_HOLD_MS = 1500;       // ปรับให้ตรวจจับว่าไม่มีคนเร็วขึ้น (เดิม 5000 ms)
+const unsigned long MOTION_HOLD_MS = 5000;       // ตรึง motion=ON ไว้ 5 วินาทีหลังตรวจพบ ป้องกันการกระพริบ ON/OFF
 const unsigned long PIR_WARMUP_MS  = 0;          // ตอนโชว์จริงค่อยเปลี่ยนเป็น 30000
 const unsigned long LONG_PRESS_MS  = 800;
 const unsigned long AUTO_SEND_MS   = 800;
