@@ -128,6 +128,11 @@ html.light .text-emerald-400 {
   color: #15803D !important;
 }
 
+html.light .text-red-400,
+html.light .text-red-300 {
+  color: #DC2626 !important;
+}
+
 html.light .text-glow-orange,
 html.light .text-glow-green {
   text-shadow: none !important;
