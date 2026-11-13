@@ -12,7 +12,6 @@ const char* WIFI_PASS = "1234567890";
 const char* SUPABASE_URL = "https://ecmdrqotdtbmfckovtbw.supabase.co/rest/v1/rooms?on_conflict=id";
 const char* SUPABASE_KEY = "sb_publishable_X8gWTK8ZjbD47K8sgr7dcA_0_tARmsz";
 const char* LINE_TOKEN   = "hCMwj5lL9wHdw3qinXm9A4aKZX3Z//xXmtPDvz19IU0ZdIYRlPsgPixiEyjPXrht/hwt1i5A3P9S8+itdWFtVzD8i0OOADyDLQh/x+Mg8V4lyjgqcH9dkHf1Dlzc8nrEaTMpvGrhPygiaH/lD7FMNY9PbdgDzCFqoOLOYbqAITQ=";
-const unsigned long LINE_COOLDOWN_MS = 180000; // Cooldown 3 นาที ป้องกันสแปมแจ้งเตือนซ้ำ
 
 const int   VOLTAGE_V        = 220;
 const float MAX_AMPS         = 20.0;
@@ -64,10 +63,10 @@ RoomAlarmState roomAlarmState[ROOM_COUNT] = {STATE_NORMAL, STATE_NORMAL, STATE_N
 unsigned long wasteStartedAt[ROOM_COUNT] = {0};  // เวลาที่เริ่มเข้าเงื่อนไขไม่มีคนและไฟเกิน
 unsigned long clearStartedAt[ROOM_COUNT] = {0};  // เวลาที่เริ่มเข้าเงื่อนไขเคลียร์ (มีคนหรือไฟลด)
 unsigned long lastLineAlertMs[ROOM_COUNT] = {0}; // เวลาแจ้งเตือน LINE ล่าสุดของแต่ละห้อง
-bool hasAlertedOnce[ROOM_COUNT] = {false};       // บันทึกว่าห้องนี้เคยส่ง alert แล้วหรือยัง
 
 const unsigned long WASTE_CONFIRM_MS = 5000;     // ต้องไม่มีคนและไฟเกินต่อเนื่องครบ 5 วินาทีจึงจะแจ้งเตือน
 const unsigned long CLEAR_CONFIRM_MS = 10000;    // ต้องมีคนอยู่ต่อเนื่อง 10 วินาทีถึงจะเคลียร์ incident ป้องกัน PIR กระพริบ
+const unsigned long RECHECK_INTERVAL_MS = 10000; // หลังส่ง LINE แล้วรอ 10 วินาที ตรวจสอบอีกครั้งถึงจะส่งใหม่
 
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
@@ -170,12 +169,11 @@ bool ensureWifi() {
 }
 
 void sendLineAlert(int idx, float amps) {
-  // ตรวจสอบ Cooldown: ถ้าเคยแจ้งเตือนแล้ว และยังไม่พ้นระยะเวลา 3 นาที จะไม่ส่งเด็ดขาด
-  if (hasAlertedOnce[idx] && (millis() - lastLineAlertMs[idx] < LINE_COOLDOWN_MS)) {
-    Serial.println("[LINE Alert] Blocked by 3-minute Cooldown");
+  // ตรวจสอบว่าส่งไปแล้วหรือยัง ถ้าเคยส่ง ต้องรอครบ 10 วินาทีถึงจะส่งใหม่ได้
+  if (lastLineAlertMs[idx] != 0 && (millis() - lastLineAlertMs[idx] < RECHECK_INTERVAL_MS)) {
+    Serial.println("[LINE Alert] Waiting for 10s recheck interval");
     return;
   }
-  hasAlertedOnce[idx] = true;
   lastLineAlertMs[idx] = millis(); // บันทึกเวลาทันทีเพื่อป้องกันการส่งซ้ำ
 
   HTTPClient http;
@@ -245,13 +243,14 @@ void updateAlarmState(int idx, float amps, bool motion) {
       break;
 
     case STATE_WASTE_ALERTED:
-      // กำลังอยู่ในสถานะ Energy Waste ที่แจ้งเตือนไปแล้ว -> จะไม่มีการส่ง LINE ซ้ำเด็ดขาด!
+      // กำลังอยู่ในสถานะ Energy Waste ที่แจ้งเตือนไปแล้ว
       // จะยอมกลับเป็น Normal ก็ต่อเมื่อ:
       // 1) ผู้ใช้ปิดโหลดหรือลดกระแสจนแทบไม่มีไฟ (amps < 0.5A) ทันที หรือ
       // 2) มีคนตรวจพบ หรือกระแสไฟลดลงต่อเนื่องครบ CLEAR_CONFIRM_MS (10 วินาที)
       if (amps < 0.5 || !roomLoadOn[idx]) {
         roomAlarmState[idx] = STATE_NORMAL;
         clearStartedAt[idx] = 0;
+        lastLineAlertMs[idx] = 0;
         sendNow();
       } else if (motion || amps < 7.0) {
         if (clearStartedAt[idx] == 0) {
@@ -259,11 +258,16 @@ void updateAlarmState(int idx, float amps, bool motion) {
         } else if (now - clearStartedAt[idx] >= CLEAR_CONFIRM_MS) {
           roomAlarmState[idx] = STATE_NORMAL;
           clearStartedAt[idx] = 0;
+          lastLineAlertMs[idx] = 0;
           sendNow();
         }
       } else {
-        // ยังคงไม่มีคนและไฟเกินอยู่ ให้รีเซ็ตเวลาเคลียร์
+        // ยังคงไม่มีคนและไฟเกินอยู่ → ตรวจสอบซ้ำทุก 10 วินาทีแล้วส่ง LINE อีกครั้ง
         clearStartedAt[idx] = 0;
+        if (now - lastLineAlertMs[idx] >= RECHECK_INTERVAL_MS) {
+          sendLineAlert(idx, amps);
+          sendNow();
+        }
       }
       break;
   }
