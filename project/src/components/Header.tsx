@@ -1,6 +1,7 @@
 import { isSupabaseConfigured } from '../lib/supabase';
 import { API_URL } from '../lib/config';
 import { Radio, Cpu, Wifi, CloudOff, Cloud, Loader2 } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 interface Props {
   connectionState?: 'connecting' | 'online' | 'offline';
@@ -40,7 +41,7 @@ export default function Header({ connectionState = 'online' }: Props) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] sm:text-xs">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] sm:text-xs">
           <div className="flex items-center gap-1.5 text-slate-400">
             <Cpu className="h-3.5 w-3.5 text-kmitl-orange" />
             <span>AI Core: <span className="font-mono text-kmitl-green">ONLINE</span></span>
@@ -52,6 +53,9 @@ export default function Header({ connectionState = 'online' }: Props) {
           <div className={`flex items-center gap-1.5 ${conn.color}`}>
             <ConnIcon className={`h-3.5 w-3.5 ${connectionState === 'connecting' ? 'animate-spin' : ''}`} />
             <span className="font-mono">{isLocal ? 'MODE: LOCAL' : `${API_URL ? 'API' : 'DB'}: ${conn.label}`}</span>
+          </div>
+          <div className="border-l border-slate-700/60 pl-3">
+            <ThemeToggle />
           </div>
         </div>
       </div>

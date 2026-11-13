@@ -42,3 +42,135 @@
     background: #FF6A00;
   }
 }
+
+/* ======================== Light Mode Overrides ======================== */
+html.light body,
+html.light #root,
+html.light .bg-charcoal-900 {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+html.light header.bg-charcoal-900\/80 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  border-bottom-color: rgba(255, 106, 0, 0.2) !important;
+}
+
+html.light header p.bg-charcoal-900\/60 {
+  background-color: rgba(241, 245, 249, 0.9) !important;
+  color: #475569 !important;
+}
+
+html.light .bg-charcoal-850 {
+  background-color: #FFFFFF !important;
+}
+
+html.light .bg-charcoal-800,
+html.light .bg-charcoal-800\/70,
+html.light .bg-charcoal-800\/60 {
+  background-color: #FFFFFF !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .bg-charcoal-800\/80,
+html.light .bg-charcoal-800\/90,
+html.light .bg-charcoal-700,
+html.light .bg-charcoal-700\/80 {
+  background-color: #F1F5F9 !important;
+}
+
+html.light .bg-charcoal-700\/60,
+html.light .bg-charcoal-600,
+html.light .bg-charcoal-600\/40 {
+  background-color: #E2E8F0 !important;
+}
+
+/* Borders in Light Mode */
+html.light .border-charcoal-600,
+html.light .border-charcoal-600\/40,
+html.light .border-charcoal-500,
+html.light .border-charcoal-500\/60,
+html.light .border-slate-600,
+html.light .border-slate-600\/60,
+html.light .border-slate-700,
+html.light .border-slate-700\/60 {
+  border-color: #E2E8F0 !important;
+}
+
+/* Text Colors in Light Mode */
+html.light .text-slate-100,
+html.light .text-slate-200 {
+  color: #0F172A !important;
+}
+
+html.light .text-slate-300 {
+  color: #1E293B !important;
+}
+
+html.light .text-slate-400 {
+  color: #475569 !important;
+}
+
+html.light .text-slate-500 {
+  color: #64748B !important;
+}
+
+html.light .text-slate-600 {
+  color: #94A3B8 !important;
+}
+
+html.light .text-kmitl-orange-light {
+  color: #D95300 !important;
+}
+
+html.light .text-kmitl-green {
+  color: #15803D !important;
+}
+
+html.light .text-glow-orange,
+html.light .text-glow-green {
+  text-shadow: none !important;
+}
+
+/* Card Grid Background */
+html.light .card-grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 106, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 106, 0, 0.04) 1px, transparent 1px) !important;
+}
+
+/* Scrollbar in Light Mode */
+html.light .scrollbar-thin::-webkit-scrollbar-track {
+  background: #F1F5F9 !important;
+}
+html.light .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #CBD5E1 !important;
+}
+html.light .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #FF6A00 !important;
+}
+
+/* Form Inputs, Selects, and Tables */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Tooltip & Popover */
+html.light .bg-charcoal-900\/95 {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Footer border */
+html.light footer {
+  border-top-color: #E2E8F0 !important;
+}

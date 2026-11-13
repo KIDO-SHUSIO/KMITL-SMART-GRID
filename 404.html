@@ -5,6 +5,21 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KMITL Smart Energy Saver · K-SES Dashboard</title>
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('kses-theme');
+          var isDark = t === 'dark' || (!t || t === 'system' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta property="og:title" content="KMITL Smart Grid & AI Energy Guardian" />
     <meta property="og:description" content="ระบบติดตามการใช้พลังงานไฟฟ้าและลดคาร์บอนไดออกไซด์แบบ Real-time · KMITL & Phra Pathom Witthayalai School" />
     <meta property="og:image" content="https://kido-shusio.github.io/KMITL-SMART-GRID/og-cover.jpg?v=2" />
@@ -12,8 +27,8 @@
     <meta name="twitter:title" content="KMITL Smart Grid & AI Energy Guardian" />
     <meta name="twitter:description" content="ระบบติดตามการใช้พลังงานไฟฟ้าและลดคาร์บอนไดออกไซด์แบบ Real-time · KMITL & Phra Pathom Witthayalai School" />
     <meta name="twitter:image" content="https://kido-shusio.github.io/KMITL-SMART-GRID/og-cover.jpg?v=2" />
-    <script type="module" crossorigin src="./assets/index--Xe7tZ_O.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-Bv2GCUqU.css">
+    <script type="module" crossorigin src="./assets/index-DSkaiHT0.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BDKH9iqa.css">
   </head>
   <body>
     <div id="root"></div>
