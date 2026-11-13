@@ -89,10 +89,10 @@ bool longHandled = false;
 // -------------------------------------------------------
 float readAmps() {
   long sum = 0;
-  for (int i = 0; i < 20; i++) {
+  for (int i = 0; i < 10; i++) {
     sum += analogRead(PIN_POT);
   }
-  float raw = sum / 20.0;
+  float raw = sum / 10.0;
   float amps = (raw / 4095.0) * MAX_AMPS;
   if (amps < 0.15) amps = 0;
   return round(amps * 10.0) / 10.0;
@@ -168,15 +168,19 @@ bool ensureWifi() {
   return WiFi.status() == WL_CONNECTED;
 }
 
-void sendLineAlert(int idx, float amps) {
+// ----------------- Background Network Task (Core 0) -----------------
+TaskHandle_t netTaskHandle = NULL;
+volatile bool needSendTelemetry = false;
+volatile bool needSendLineAlert = false;
+volatile bool isNetBusy = false;
+
+float netAmps = 0.0;
+bool  netMotion = false;
+int   netRoomIdx = 0;
+
+void doSendLineAlert(int idx, float amps) {
   if (!ensureWifi()) {
     Serial.println("[LINE Alert] WiFi not connected, skipping");
-    return;
-  }
-
-  // ตรวจสอบว่าส่งไปแล้วหรือยัง ถ้าเคยส่ง ต้องรอครบ 10 วินาทีถึงจะส่งใหม่ได้
-  if (lastLineAlertMs[idx] != 0 && (millis() - lastLineAlertMs[idx] < RECHECK_INTERVAL_MS)) {
-    Serial.println("[LINE Alert] Waiting for 10s recheck interval");
     return;
   }
 
@@ -208,17 +212,92 @@ void sendLineAlert(int idx, float amps) {
   int code = http.POST((uint8_t*)payload, strlen(payload));
   if (code >= 200 && code < 300) {
     Serial.println("LINE broadcast alert sent successfully!");
-    lastLineAlertMs[idx] = millis();
   } else {
     Serial.printf("LINE broadcast alert failed: HTTP %d\n", code);
     String resp = http.getString();
     Serial.printf("LINE response: %s\n", resp.c_str());
-    lastLineAlertMs[idx] = 0;
   }
   http.end();
 }
 
+void doSendTelemetry(float amps, bool motion, int idx) {
+  if (!ensureWifi()) {
+    lastResult = "WiFi FAIL";
+    return;
+  }
+
+  bool isWaste = (!motion && amps >= 7.0);
+  const char* currentStatus = (isWaste || roomAlarmState[idx] == STATE_WASTE_ALERTED) ? "Energy Waste" : "Normal";
+
+  char body[350];
+  snprintf(body, sizeof(body),
+    "{\"id\":\"%s\",\"building\":\"%s\",\"room_number\":\"%s\",\"zone\":\"%s\",\"current\":%.1f,\"motion\":%s,\"status\":\"%s\"}",
+    ROOMS[idx].id,
+    ROOMS[idx].building,
+    ROOMS[idx].room,
+    ROOMS[idx].zone,
+    amps,
+    motion ? "true" : "false",
+    currentStatus
+  );
+
+  Serial.println(body);
+
+  HTTPClient http;
+  WiFiClientSecure secure;
+  secure.setInsecure();
+
+  http.begin(secure, SUPABASE_URL);
+  http.setTimeout(4000);
+  
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("apikey", SUPABASE_KEY);
+  http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
+  http.addHeader("Prefer", "resolution=merge-duplicates,return=minimal");
+
+  int code = http.POST((uint8_t*)body, strlen(body));
+
+  if (code >= 200 && code < 300) {
+    lastResult = "Supabase OK";
+  } else {
+    lastResult = "HTTP " + String(code);
+  }
+
+  http.end();
+  Serial.println(lastResult);
+}
+
+void networkWorkerTask(void* pvParameters) {
+  for (;;) {
+    if (needSendLineAlert && !isNetBusy) {
+      isNetBusy = true;
+      needSendLineAlert = false;
+      doSendLineAlert(netRoomIdx, netAmps);
+      isNetBusy = false;
+    }
+    if (needSendTelemetry && !isNetBusy) {
+      isNetBusy = true;
+      needSendTelemetry = false;
+      doSendTelemetry(netAmps, netMotion, netRoomIdx);
+      isNetBusy = false;
+    }
+    vTaskDelay(pdMS_TO_TICKS(20));
+  }
+}
+
 void sendNow(); // forward declaration
+
+void sendLineAlert(int idx, float amps) {
+  if (lastLineAlertMs[idx] != 0 && (millis() - lastLineAlertMs[idx] < RECHECK_INTERVAL_MS)) {
+    Serial.println("[LINE Alert] Blocked by interval");
+    return;
+  }
+  lastLineAlertMs[idx] = millis();
+
+  netRoomIdx = idx;
+  netAmps = amps;
+  needSendLineAlert = true; // มอบหมายให้ Core 0 ส่งในเบื้องหลัง ไม่บล็อกจอ OLED
+}
 
 void updateAlarmState(int idx, float amps, bool motion) {
   unsigned long now = millis();
@@ -277,53 +356,6 @@ void updateAlarmState(int idx, float amps, bool motion) {
   }
 }
 
-void sendTelemetry(float amps, bool motion) {
-  if (!ensureWifi()) {
-    lastResult = "WiFi FAIL";
-    return;
-  }
-
-  bool isWaste = (!motion && amps >= 7.0);
-  const char* currentStatus = (isWaste || roomAlarmState[roomIdx] == STATE_WASTE_ALERTED) ? "Energy Waste" : "Normal";
-
-  char body[350];
-  snprintf(body, sizeof(body),
-    "{\"id\":\"%s\",\"building\":\"%s\",\"room_number\":\"%s\",\"zone\":\"%s\",\"current\":%.1f,\"motion\":%s,\"status\":\"%s\"}",
-    ROOMS[roomIdx].id,
-    ROOMS[roomIdx].building,
-    ROOMS[roomIdx].room,
-    ROOMS[roomIdx].zone,
-    amps,
-    motion ? "true" : "false",
-    currentStatus
-  );
-
-  Serial.println(body);
-
-  HTTPClient http;
-  WiFiClientSecure secure;
-  secure.setInsecure();
-
-  http.begin(secure, SUPABASE_URL);
-  http.setTimeout(4000);
-  
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("apikey", SUPABASE_KEY);
-  http.addHeader("Authorization", String("Bearer ") + SUPABASE_KEY);
-  http.addHeader("Prefer", "resolution=merge-duplicates,return=minimal");
-
-  int code = http.POST((uint8_t*)body, strlen(body));
-
-  if (code >= 200 && code < 300) {
-    lastResult = "Supabase OK";
-  } else {
-    lastResult = "HTTP " + String(code);
-  }
-
-  http.end();
-  Serial.println(lastResult);
-}
-
 void sendNow() {
   float amps = roomLoadOn[roomIdx] ? readAmps() : 0.0;
   bool motion = hasMotion();
@@ -331,9 +363,13 @@ void sendNow() {
   lastSentAmps = amps;
   lastSentMotion = motion;
   lastSentRoom = roomIdx;
-
-  sendTelemetry(amps, motion);
   lastAuto = millis();
+
+  // ส่งข้อมูลไปยัง Background Task ให้ส่งผ่าน WiFi โดยไม่บล็อกการหมุน Pot หรือการวาด OLED
+  netAmps = amps;
+  netMotion = motion;
+  netRoomIdx = roomIdx;
+  needSendTelemetry = true;
 }
 
 // -------------------------------------------------------
@@ -436,6 +472,7 @@ void setup() {
   analogSetPinAttenuation(PIN_POT, ADC_11db);
 
   Wire.begin(21, 22);
+  Wire.setClock(400000); // 400kHz Fast I2C สำหรับ OLED ลื่นไหล Real-time
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println("OLED not found");
   }
@@ -445,6 +482,17 @@ void setup() {
   draw();
   lastResult = ensureWifi() ? "ready" : "WiFi FAIL";
   updateRoomLEDs();
+
+  // สร้าง Background Task บน Core 0 เพื่อรับหน้าที่ส่งข้อมูลผ่าน WiFi โดยไม่บล็อก loop หลัก
+  xTaskCreatePinnedToCore(
+    networkWorkerTask,
+    "NetWorker",
+    8192,
+    NULL,
+    1,
+    &netTaskHandle,
+    0
+  );
 }
 
 // -------------------------------------------------------
@@ -472,23 +520,28 @@ void loop() {
   // ประมวลผล State Machine ตรวจจับ Energy Waste และควบคุมการแจ้งเตือน LINE อย่างแม่นยำ
   updateAlarmState(roomIdx, liveAmps, liveMotion);
 
-  if (AUTO_SEND_MS > 0) {
-    bool changed =
-      (fabs(liveAmps - lastSentAmps) >= AMPS_DELTA) ||
-      (liveMotion != lastSentMotion) ||
-      (roomIdx != lastSentRoom);
-
-    unsigned long since = millis() - lastAuto;
-
-    if ((changed && since >= MIN_GAP_MS) || (since >= AUTO_SEND_MS)) {
-      sendNow();
-    }
+  // ตรวจจับการหมุน Potentiometer เพื่อส่งข้อมูลเมื่อหมุนหยุดนิ่งแล้ว (Settle debounce 800ms)
+  static unsigned long lastPotMoved = 0;
+  static float lastKnownPot = 0;
+  if (fabs(liveAmps - lastKnownPot) >= 0.2) {
+    lastKnownPot = liveAmps;
+    lastPotMoved = millis();
   }
 
-  if (millis() - lastDraw >= 250) {
+  bool knobSettled = (millis() - lastPotMoved >= 800) && (fabs(liveAmps - lastSentAmps) >= AMPS_DELTA);
+  bool motionChanged = (liveMotion != lastSentMotion);
+  bool roomChanged = (roomIdx != lastSentRoom);
+  bool heartbeat = (millis() - lastAuto >= 10000); // heartbeat ทุก 10 วินาที
+
+  if (knobSettled || motionChanged || roomChanged || heartbeat) {
+    sendNow();
+  }
+
+  // อัปเดตหน้าจอ OLED ทุก 40ms (~25 FPS) แสดงผลเรียลไทม์ลื่นไหล ไม่กระตุก
+  if (millis() - lastDraw >= 40) {
     lastDraw = millis();
     draw();
   }
 
-  delay(5);
+  delay(2);
 }
