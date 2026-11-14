@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { AlertTriangle, CheckCircle2, MapPin, Activity, Radar, Trash2 } from 'lucide-react';
 import type { Room } from '../types';
 import { monthlyWaste } from '../engine/energy';
@@ -10,19 +11,43 @@ function timeAgo(ts: number): string {
   return `${Math.floor(m / 60)}h ago`;
 }
 
-function RoomCard({ room, onDelete }: { room: Room; onDelete?: (id: string) => void }) {
+function RoomCard({
+  room,
+  onDelete,
+  isLatestAlert,
+}: {
+  room: Room;
+  onDelete?: (id: string) => void;
+  isLatestAlert?: boolean;
+}) {
   const waste = room.status === 'Energy Waste';
 
   return (
     <div
       className={`group relative overflow-hidden rounded-xl border p-4 transition-all duration-300 hover:-translate-y-0.5 ${
-        waste
+        isLatestAlert
+          ? 'border-red-500 ring-2 ring-red-500/80 bg-red-950/40 shadow-[0_0_30px_rgba(239,68,68,0.35)]'
+          : waste
           ? 'border-red-500/50 bg-red-950/30 shadow-[0_0_20px_rgba(248,113,113,0.18)]'
           : 'border-charcoal-500/60 bg-charcoal-800/70 shadow-[0_0_14px_rgba(57,255,122,0.08)] hover:border-kmitl-green/40'
       }`}
     >
+      {/* ป้ายเตือนห้องที่เพิ่งแจ้งเตือนล่าสุด เด่นชัดเจน */}
+      {isLatestAlert && (
+        <div className="mb-2.5 flex items-center justify-between border-b border-red-500/30 pb-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/70 bg-red-500/25 px-2.5 py-0.5 font-mono text-[10px] font-bold tracking-wider text-red-200 shadow-[0_0_12px_rgba(239,68,68,0.4)] animate-pulse">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            🚨 แจ้งเตือนล่าสุด · LATEST ALERT
+          </span>
+          <span className="font-mono text-[10px] font-bold text-red-400">#1 PRIORITY</span>
+        </div>
+      )}
+
       {waste && (
-        <div className="absolute right-0 top-0 h-16 w-16 rounded-full bg-red-500/20 blur-2xl" />
+        <div className="absolute right-0 top-0 h-20 w-20 rounded-full bg-red-500/20 blur-2xl" />
       )}
 
       <div className="relative flex items-start justify-between">
@@ -41,7 +66,7 @@ function RoomCard({ room, onDelete }: { room: Room; onDelete?: (id: string) => v
           }`}
         >
           {waste ? (
-            <AlertTriangle className="h-4 w-4 text-red-400" />
+            <AlertTriangle className="h-4 w-4 text-red-400 animate-pulse" />
           ) : (
             <CheckCircle2 className="h-4 w-4 text-kmitl-green" />
           )}
@@ -114,6 +139,20 @@ interface GridProps {
 }
 
 export default function RoomGrid({ rooms, onDelete }: GridProps) {
+  // เรียงลำดับห้อง:
+  // 1. ห้องที่อยู่ในสถานะ Energy Waste ขึ้นก่อน Normal เสมอ
+  // 2. ห้องที่เพิ่งแจ้งเตือนหรืออัปเดตล่าสุด (lastUpdated ใหม่สุด) จะขึ้นเป็นห้องแรกสุด (#1)
+  const sortedRooms = useMemo(() => {
+    return [...rooms].sort((a, b) => {
+      const aWaste = a.status === 'Energy Waste' ? 1 : 0;
+      const bWaste = b.status === 'Energy Waste' ? 1 : 0;
+      if (aWaste !== bWaste) {
+        return bWaste - aWaste; // Waste ขึ้นก่อน Normal
+      }
+      return (b.lastUpdated || 0) - (a.lastUpdated || 0); // ใหม่สุดขึ้นก่อน
+    });
+  }, [rooms]);
+
   return (
     <section className="rounded-2xl border border-charcoal-500/50 bg-charcoal-850/60 p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -125,7 +164,7 @@ export default function RoomGrid({ rooms, onDelete }: GridProps) {
             <h2 className="font-mono text-sm font-bold tracking-wide text-slate-100">
               AI REAL-TIME DASHBOARD
             </h2>
-            <p className="text-[11px] text-slate-500">Live classroom energy monitoring</p>
+            <p className="text-[11px] text-slate-500">Live classroom energy monitoring (เรียงตามการแจ้งเตือนล่าสุด)</p>
           </div>
         </div>
         <div className="flex items-center gap-3 text-[11px]">
@@ -139,8 +178,13 @@ export default function RoomGrid({ rooms, onDelete }: GridProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {rooms.map((room) => (
-          <RoomCard key={room.id} room={room} onDelete={onDelete} />
+        {sortedRooms.map((room, idx) => (
+          <RoomCard
+            key={room.id}
+            room={room}
+            onDelete={onDelete}
+            isLatestAlert={idx === 0 && room.status === 'Energy Waste'}
+          />
         ))}
       </div>
     </section>

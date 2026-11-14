@@ -133,6 +133,15 @@ html.light .text-red-300 {
   color: #DC2626 !important;
 }
 
+html.light .text-red-200 {
+  color: #991B1B !important;
+}
+
+html.light .bg-red-950\/30,
+html.light .bg-red-950\/40 {
+  background-color: #FEF2F2 !important;
+}
+
 html.light .text-glow-orange,
 html.light .text-glow-green {
   text-shadow: none !important;
