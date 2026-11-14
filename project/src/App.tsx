@@ -126,11 +126,16 @@ function App() {
       if (eventType === 'DELETE' && oldData) {
         setRooms((prev) => prev.filter((r) => r.id !== oldData.id));
       } else if (newData) {
+        // เมื่อได้รับสัญญาณสดจาก ESP32 / Realtime ให้แสตมป์เวลาล่าสุดทันที
+        const roomWithFreshTime: Room = {
+          ...newData,
+          lastUpdated: Date.now(),
+        };
         setRooms((prev) => {
-          const exists = prev.some((r) => r.id === newData.id);
+          const exists = prev.some((r) => r.id === roomWithFreshTime.id);
           return exists
-            ? prev.map((r) => (r.id === newData.id ? newData : r))
-            : [...prev, newData];
+            ? prev.map((r) => (r.id === roomWithFreshTime.id ? roomWithFreshTime : r))
+            : [...prev, roomWithFreshTime];
         });
         if (
           newData.status === 'Energy Waste' &&
@@ -203,10 +208,11 @@ function App() {
       }
       try {
         const room = await upsertRoom(payload);
+        const roomWithFreshTime: Room = { ...room, lastUpdated: Date.now() };
         setRooms((prev) => {
           const next = prev.some((r) => r.id === room.id)
-            ? prev.map((r) => (r.id === room.id ? room : r))
-            : [...prev, room];
+            ? prev.map((r) => (r.id === room.id ? roomWithFreshTime : r))
+            : [...prev, roomWithFreshTime];
           return next;
         });
 

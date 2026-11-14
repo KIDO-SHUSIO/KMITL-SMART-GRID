@@ -4,7 +4,9 @@ import type { Room } from '../types';
 import { monthlyWaste } from '../engine/energy';
 
 function timeAgo(ts: number): string {
-  const s = Math.floor((Date.now() - ts) / 1000);
+  if (!ts) return 'just now';
+  const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (s < 10) return 'just now';
   if (s < 60) return `${s}s ago`;
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m ago`;
